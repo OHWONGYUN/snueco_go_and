@@ -1,0 +1,44 @@
+﻿# Misc
+.DS_Store
+.history
+.env
+
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+build/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/.generated/
+
+# Android
+android/.gradle
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/app/build/
+.gradle/
+
+# iOS
+ios/Pods/
+ios/Podfile.lock
+
+# Editor
+.vscode/
+.idea/
+*.iml
+
+# ---------------------------------
+# 🔒 SECRET KEY FILES (보안 - 절대 업로드 금지)
+# ---------------------------------
+google-services.json
+GoogleService-Info.plist
+firebase_config.dart
+firebase_options.dart
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase_config.dart
+**/firebase_options.dart

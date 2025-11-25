@@ -1,0 +1,60 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "this_month",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "this_month_steps",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "this_month",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "this_month_steps",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "this_month",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "count_bottle",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "this_month",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "count_bottle",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ]
+}
