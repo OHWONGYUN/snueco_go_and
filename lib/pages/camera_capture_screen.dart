@@ -7,6 +7,7 @@ import 'package:camera/camera.dart';
 import 'package:http/http.dart' as http; // 서버 통신을 위해 추가
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // ← 추가: uid 전송용
+import 'package:permission_handler/permission_handler.dart';
 
 // ---------------------------------------------------------------
 // ▼▼▼ 서버 주소 최종 버전으로 수정 ▼▼▼
@@ -45,8 +46,8 @@ class CameraCaptureScreen extends StatefulWidget {
 }
 
 class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
-  late CameraController _controller;
-  late Future<void> _initializeControllerFuture;
+  CameraController? _controller; // nullable로 변경
+  Future<void>? _initializeControllerFuture; // nullable로 변경
 
   String? _shotPath;
   bool _review = false;
@@ -63,7 +64,63 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
   @override
   void initState() {
     super.initState();
-    initCamera();
+    _checkPermissionAndInit();
+  }
+
+  Future<void> _checkPermissionAndInit() async {
+    // 1. 카메라 권한 상태 확인
+    var status = await Permission.camera.status;
+
+    // 2. 권한이 없으면 요청 (아직 결정되지 않은 상태)
+    if (!status.isGranted) {
+      status = await Permission.camera.request();
+    }
+
+    // 3. 결과 처리
+    if (status.isGranted) {
+      initCamera();
+    } else if (status.isPermanentlyDenied) {
+      // 영구 거부된 경우 설정으로 유도
+      if (mounted) {
+        _showPermissionSettingsDialog();
+      }
+    } else {
+      // 단순 거부 (다시 들어왔을 때 또 거부 상태일 수 있음)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('카메라 권한이 필요합니다.')),
+        );
+      }
+    }
+  }
+
+  void _showPermissionSettingsDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('카메라 권한 필요'),
+        content: const Text(
+          '카메라를 사용하려면 설정에서 권한을 허용해야 합니다.\n권한 설정을 변경하면 앱이 다시 시작됩니다.\n설정 화면으로 이동하시겠습니까?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // 다이얼로그 닫기
+              Navigator.of(context).pop(); // 화면 나가기 (선택 사항)
+            },
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              openAppSettings(); // 설정 화면 열기
+            },
+            child: const Text('설정으로 이동'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> initCamera() async {
@@ -79,19 +136,21 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
-      _initializeControllerFuture = _controller.initialize();
+      _initializeControllerFuture = _controller!.initialize();
       if (mounted) setState(() {});
     } catch (e) {
+      // 이미 권한 체크를 앞단에서 했으므로, 여기서 권한 에러가 날 확률은 줄어듭니다.
+      // 하지만 초기화 중 다른 오류가 날 수 있으므로 예외 처리는 유지합니다.
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('카메라 초기화 실패: $e')),
+        SnackBar(content: Text('카메라 초기화 오류: $e')),
       );
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -216,8 +275,10 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
 
   Future<void> _shoot() async {
     try {
+      if (_initializeControllerFuture == null || _controller == null)
+        return; // 초기화 전이면 리턴
       await _initializeControllerFuture;
-      final image = await _controller.takePicture();
+      final image = await _controller!.takePicture();
       if (!mounted) return;
       setState(() {
         _shotPath = image.path;
@@ -300,21 +361,30 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
     });
   }
 
+// ... (중략: _fetchMenusForToday, _onMenuSelectPressed 등은 수정 불필요) ...
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
+          // 아직 초기화 Future 자체가 없거나(권한 확인 중), 완료되지 않은 경우
+          if (_initializeControllerFuture == null ||
+              snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
+          // _controller가 null이 아닌지 확인
+          if (_controller == null) {
+            return const Center(child: Text('카메라를 불러올 수 없습니다.'));
+          }
+
           return Stack(
             fit: StackFit.expand,
             children: [
               _review && _shotPath != null
                   ? Image.file(File(_shotPath!), fit: BoxFit.cover)
-                  : Center(child: CameraPreview(_controller)),
+                  : Center(child: CameraPreview(_controller!)), // ! 붙여서 사용
               Positioned.fill(
                 child: _TrayOverlay(
                   placedMenus: _placedMenus,
