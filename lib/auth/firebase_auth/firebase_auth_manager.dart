@@ -95,6 +95,13 @@ class FirebaseAuthManager extends AuthManager
       }
       await currentUser?.updateEmail(email);
       await updateUserDocument(email: email);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '인증 메일을 전송했습니다. 메일함에서 링크를 클릭하시면 이메일이 변경됩니다.',
+          ),
+        ),
+      );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
