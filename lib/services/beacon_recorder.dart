@@ -152,10 +152,15 @@ class BeaconRecorder {
     final storageString = prefs.getString(_backgroundStorageKey);
     if (storageString == null) return [];
 
-    final decoded = jsonDecode(storageString);
-    final storage = Storage.fromJson(decoded);
-
-    return storage.beacons;
+    try {
+      final decoded = jsonDecode(storageString);
+      final storage = Storage.fromJson(decoded);
+      return storage.beacons;
+    } catch (e) {
+      print('❌ Error loading background beacons: $e');
+      await prefs.remove(_backgroundStorageKey);
+      return [];
+    }
   }
 
   /// 백그라운드 기록 저장
@@ -169,8 +174,13 @@ class BeaconRecorder {
     final json = prefs.getString(_storageKey);
     if (json == null) return;
 
-    final storage = Storage.fromJson(jsonDecode(json));
-    _beacons.addAll(storage.beacons);
+    try {
+      final storage = Storage.fromJson(jsonDecode(json));
+      _beacons.addAll(storage.beacons);
+    } catch (e) {
+      print('❌ Error loading beacons: $e');
+      prefs.remove(_storageKey);
+    }
   }
 
   /// 포그라운드 기록 저장

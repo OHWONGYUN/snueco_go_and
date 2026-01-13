@@ -205,8 +205,13 @@ class BeaconService {
     final String? storageString = prefs.getString(_storageKey);
 
     if (storageString != null) {
-      final Storage storage = Storage.fromJson(jsonDecode(storageString));
-      _beacons.addAll(storage.beacons);
+      try {
+        final Storage storage = Storage.fromJson(jsonDecode(storageString));
+        _beacons.addAll(storage.beacons);
+      } catch (e) {
+        print('❌ Error loading beacons in service: $e');
+        prefs.remove(_storageKey);
+      }
     }
   }
 

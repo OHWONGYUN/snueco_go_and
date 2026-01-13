@@ -51,11 +51,16 @@ class _HomePage3HomeWidgetState extends State<HomePage3HomeWidget> {
   Future<void> _loadStoredBeacons() async {
     final prefs = await SharedPreferences.getInstance();
     final beaconJsonList = prefs.getStringList('detected_beacons') ?? [];
-    final beacons =
-        beaconJsonList.map((jsonStr) => json.decode(jsonStr)).toList();
+    try {
+      final beacons =
+          beaconJsonList.map((jsonStr) => json.decode(jsonStr)).toList();
 
-    // 원하는 작업: 예를 들어 콘솔 출력
-    print('앱 시작 시 불러온 비콘 데이터: $beacons');
+      // 원하는 작업: 예를 들어 콘솔 출력
+      print('앱 시작 시 불러온 비콘 데이터: $beacons');
+    } catch (e) {
+      print('❌ Error loading detected_beacons: $e');
+      prefs.remove('detected_beacons');
+    }
   }
 
   @override
@@ -668,35 +673,38 @@ class _HomePage3HomeWidgetState extends State<HomePage3HomeWidget> {
                       ),
                     ),
                     Align(
-  alignment: AlignmentDirectional(1.0, 1.0),
-  child: Padding(
-    padding: EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 15.0, 15.0),
-    child: GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => CameraCaptureScreen()),
-        );
-      },
-      child: Container(
-        width: 75.0,
-        height: 75.0,
-        decoration: BoxDecoration(
-          color: Color(0xFF562EE8),
-          shape: BoxShape.circle,
-        ),
-        child: Align(
-          alignment: AlignmentDirectional(0.0, 0.0),
-          child: Icon(
-            Icons.lunch_dining,
-            color: FlutterFlowTheme.of(context).primaryBackground,
-            size: 45.0,
-          ),
-        ),
-      ),
-    ),
-  ),
-),
+                      alignment: AlignmentDirectional(1.0, 1.0),
+                      child: Padding(
+                        padding: EdgeInsetsDirectional.fromSTEB(
+                            0.0, 0.0, 15.0, 15.0),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => CameraCaptureScreen()),
+                            );
+                          },
+                          child: Container(
+                            width: 75.0,
+                            height: 75.0,
+                            decoration: BoxDecoration(
+                              color: Color(0xFF562EE8),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Align(
+                              alignment: AlignmentDirectional(0.0, 0.0),
+                              child: Icon(
+                                Icons.lunch_dining,
+                                color: FlutterFlowTheme.of(context)
+                                    .primaryBackground,
+                                size: 45.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 AuthUserStreamWidget(
