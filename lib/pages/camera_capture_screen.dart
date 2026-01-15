@@ -369,34 +369,58 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snap) {
-          // 아직 초기화 Future 자체가 없거나(권한 확인 중), 완료되지 않은 경우
           if (_initializeControllerFuture == null ||
-              snap.connectionState != ConnectionState.done) {
+              snap.connectionState != ConnectionState.done ||
+              _controller == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          // _controller가 null이 아닌지 확인
-          if (_controller == null) {
-            return const Center(child: Text('카메라를 불러올 수 없습니다.'));
+
+          // 카메라 비율 (가로/세로)
+          // controller.value.aspectRatio는 보통 4:3 (1.33..) 또는 16:9 (1.77..)
+          // 세로 모드에서는 이의 역수(3:4 or 9:16)가 UI 상의 비율이 됨
+          var ratio = _controller!.value.aspectRatio;
+          if (MediaQuery.of(context).orientation == Orientation.portrait) {
+            ratio = 1 / ratio;
           }
 
           return Stack(
             fit: StackFit.expand,
             children: [
-              _review && _shotPath != null
-                  ? Image.file(File(_shotPath!), fit: BoxFit.cover)
-                  : Center(child: CameraPreview(_controller!)), // ! 붙여서 사용
-              Positioned.fill(
-                child: _TrayOverlay(
-                  placedMenus: _placedMenus,
-                  onAccept: _onMenuItemDrop,
+              // 1. 카메라/이미지 + 그리드 영역 (화면 중앙 정렬 및 비율 고정)
+              Center(
+                child: AspectRatio(
+                  aspectRatio: ratio,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // 배경: 촬영된 이미지 or 카메라 프리뷰
+                      _review && _shotPath != null
+                          ? Image.file(
+                              File(_shotPath!),
+                              fit: BoxFit
+                                  .cover, // AspectRatio 박스 안이므로 cover해도 비율 유지됨
+                            )
+                          : CameraPreview(_controller!),
+
+                      // 전경: 식판 그리드
+                      _TrayOverlay(
+                        placedMenus: _placedMenus,
+                        onAccept: _onMenuItemDrop,
+                      ),
+                    ],
+                  ),
                 ),
               ),
+
+              // 2. 하단 패널 (화면 전체 기준)
               Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,
                 child: _buildBottomPanel(context),
               ),
+
+              // 3. 뒤로가기 버튼 (화면 전체 기준)
               Positioned(
                 top: 0,
                 left: 0,
@@ -527,127 +551,140 @@ class _TrayOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const rotAspect = kUnitH / kUnitW;
-    final screen = MediaQuery.of(context).size;
-    final targetH = screen.height * 0.90;
-    const hMargin = 16.0;
-    final maxW = screen.width - hMargin * 2;
-    double h = targetH;
-    double w = h * rotAspect;
-    if (w > maxW) {
-      w = maxW;
-      h = w / rotAspect;
-    }
-    final innerW = h;
-    final innerH = w;
-    final sx = innerW / kUnitW;
-    final sy = innerH / kUnitH;
 
-    Widget box({
-      required String id,
-      required double ux,
-      required double uy,
-      required double uw,
-      required double uh,
-    }) {
-      final menuItemsInSlot = placedMenus[id] ?? [];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        final maxH = constraints.maxHeight;
 
-      return Positioned(
-        left: ux * sx,
-        top: uy * sy,
-        width: uw * sx,
-        height: uh * sy,
-        child: DragTarget<String>(
-          builder: (context, candidateData, rejectedData) {
-            final isHovering = candidateData.isNotEmpty;
-            return Container(
-              padding: const EdgeInsets.all(4),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: isHovering ? Colors.yellowAccent : Colors.green,
-                  width: isHovering ? 4 : 2,
-                ),
-                color: isHovering
-                    ? Colors.green.withValues(alpha: 0.4)
-                    : Colors.green.withValues(alpha: 0.1),
-              ),
-              child: menuItemsInSlot.isEmpty
-                  ? Text(
-                      id,
-                      style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14),
-                    )
-                  : ListView(
-                      children: menuItemsInSlot.map((menuItem) {
-                        final child = Text(
-                          menuItem,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16),
-                        );
-                        return Draggable<PlacedMenu>(
-                          data: PlacedMenu(id, menuItem),
-                          feedback:
-                              Material(color: Colors.transparent, child: child),
-                          childWhenDragging:
-                              Opacity(opacity: 0.4, child: child),
-                          child: child,
-                        );
-                      }).toList(),
+        // 식판의 비율(rotAspect)을 유지하면서 부모 영역(카메라 프리뷰) 안에 꽉 차게 계산
+        // 1. 높이 기준으로 너비 계산
+        double h = maxH;
+        double w = h * rotAspect;
+
+        // 2. 만약 너비가 부모 너비를 초과하면, 너비 기준으로 높이 재조정
+        if (w > maxW) {
+          w = maxW;
+          h = w / rotAspect;
+        }
+
+        // 3. 95% 크기로 축소
+        w *= 0.95;
+        h *= 0.95;
+
+        final innerW = h;
+        final innerH = w;
+        final sx = innerW / kUnitW;
+        final sy = innerH / kUnitH;
+
+        Widget box({
+          required String id,
+          required double ux,
+          required double uy,
+          required double uw,
+          required double uh,
+        }) {
+          final menuItemsInSlot = placedMenus[id] ?? [];
+
+          return Positioned(
+            left: ux * sx,
+            top: uy * sy,
+            width: uw * sx,
+            height: uh * sy,
+            child: DragTarget<String>(
+              builder: (context, candidateData, rejectedData) {
+                final isHovering = candidateData.isNotEmpty;
+                return Container(
+                  padding: const EdgeInsets.all(4),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: isHovering ? Colors.yellowAccent : Colors.green,
+                      width: isHovering ? 4 : 2,
                     ),
-            );
-          },
-          onWillAcceptWithDetails: (details) => true,
-          onAcceptWithDetails: (details) => onAccept(id, details.data),
-        ),
-      );
-    }
-
-    return Align(
-      alignment: Alignment.center,
-      child: SizedBox(
-        width: w,
-        height: h,
-        child: RotatedBox(
-          quarterTurns: 1,
-          child: SizedBox(
-            width: innerW,
-            height: innerH,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.green, width: 4),
-                      borderRadius: BorderRadius.circular(innerH * 0.02),
-                    ),
+                    color: isHovering
+                        ? Colors.green.withValues(alpha: 0.4)
+                        : Colors.green.withValues(alpha: 0.1),
                   ),
+                  child: menuItemsInSlot.isEmpty
+                      ? Text(
+                          id,
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        )
+                      : ListView(
+                          children: menuItemsInSlot.map((menuItem) {
+                            final child = Text(
+                              menuItem,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16),
+                            );
+                            return Draggable<PlacedMenu>(
+                              data: PlacedMenu(id, menuItem),
+                              feedback: Material(
+                                  color: Colors.transparent, child: child),
+                              childWhenDragging:
+                                  Opacity(opacity: 0.4, child: child),
+                              child: child,
+                            );
+                          }).toList(),
+                        ),
+                );
+              },
+              onWillAcceptWithDetails: (details) => true,
+              onAcceptWithDetails: (details) => onAccept(id, details.data),
+            ),
+          );
+        }
+
+        return Align(
+          alignment: Alignment.center,
+          child: SizedBox(
+            width: w,
+            height: h,
+            child: RotatedBox(
+              quarterTurns: 1,
+              child: SizedBox(
+                width: innerW,
+                height: innerH,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.green, width: 4),
+                          borderRadius: BorderRadius.circular(innerH * 0.02),
+                        ),
+                      ),
+                    ),
+                    box(id: '반찬1', ux: 0.0, uy: 0.0, uw: kTopW1, uh: kTopRowH),
+                    box(id: '반찬2', ux: _x2, uy: 0.0, uw: kTopW2, uh: kTopRowH),
+                    box(id: '반찬3', ux: _x3, uy: 0.0, uw: kTopW3, uh: kTopRowH),
+                    box(id: '반찬4', ux: _x4, uy: 0.0, uw: kTopW4, uh: kTopRowH),
+                    box(
+                        id: '밥',
+                        ux: 0.0,
+                        uy: kTopRowH,
+                        uw: kBotW1,
+                        uh: kBottomRowH),
+                    box(
+                        id: '국',
+                        ux: _xBot2,
+                        uy: kTopRowH,
+                        uw: kBotW2,
+                        uh: kBottomRowH),
+                  ],
                 ),
-                box(id: '반찬1', ux: 0.0, uy: 0.0, uw: kTopW1, uh: kTopRowH),
-                box(id: '반찬2', ux: _x2, uy: 0.0, uw: kTopW2, uh: kTopRowH),
-                box(id: '반찬3', ux: _x3, uy: 0.0, uw: kTopW3, uh: kTopRowH),
-                box(id: '반찬4', ux: _x4, uy: 0.0, uw: kTopW4, uh: kTopRowH),
-                box(
-                    id: '밥',
-                    ux: 0.0,
-                    uy: kTopRowH,
-                    uw: kBotW1,
-                    uh: kBottomRowH),
-                box(
-                    id: '국',
-                    ux: _xBot2,
-                    uy: kTopRowH,
-                    uw: kBotW2,
-                    uh: kBottomRowH),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
