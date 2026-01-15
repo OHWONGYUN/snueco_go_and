@@ -96,6 +96,9 @@ dependencies:
   # animation
   rive: ^0.13.20
 
+  # camera
+  camera: ^0.10.6
+
 dependency_overrides:
   flutter_barcode_scanner:
     git:

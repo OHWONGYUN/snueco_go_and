@@ -397,6 +397,30 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
                 bottom: 0,
                 child: _buildBottomPanel(context),
               ),
+              Positioned(
+                top: 0,
+                left: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -419,8 +443,8 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
           height: panelHeight,
           decoration: BoxDecoration(
             color: isHovering
-                ? Colors.blue.withOpacity(0.5)
-                : Colors.black.withOpacity(0.4),
+                ? Colors.blue.withValues(alpha: 0.5)
+                : Colors.black.withValues(alpha: 0.4),
             border:
                 isHovering ? Border.all(color: Colors.white, width: 2) : null,
           ),
@@ -544,14 +568,14 @@ class _TrayOverlay extends StatelessWidget {
                   width: isHovering ? 4 : 2,
                 ),
                 color: isHovering
-                    ? Colors.green.withOpacity(0.4)
-                    : Colors.green.withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.4)
+                    : Colors.green.withValues(alpha: 0.1),
               ),
               child: menuItemsInSlot.isEmpty
                   ? Text(
                       id,
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontWeight: FontWeight.bold,
                           fontSize: 14),
                     )
