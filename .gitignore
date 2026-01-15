@@ -12,6 +12,8 @@ build/
 ios/Flutter/Generated.xcconfig
 ios/Flutter/flutter_export_environment.sh
 ios/.generated/
+.flutter-plugins
+.flutter-plugins-dependencies
 
 # Android
 android/.gradle
